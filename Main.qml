@@ -12,7 +12,8 @@ Window {
     title: "CheatPad"
     visible: false
     color: "transparent"
-    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+    // Tool type floats above tiling, never pinned or tiled
+    flags: Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
 
     // ============== PROPERTIES ==============
     property bool isLibraryMode: true
@@ -44,11 +45,20 @@ Window {
         var newX = Math.round((screenW - targetW) / 2)
         var newY = Math.round((screenH - targetH) / 2)
         
-        // Set all instantly
-        root.x = newX
-        root.y = newY
+        // Under Wayland (Hyprland), setting x and y can cause shaking
+        // By setting size first, we reduce geometry conflicts
         root.width = targetW
         root.height = targetH
+        
+        // Optionally delay or set x/y. Qt Wayland usually ignores explicit x/y anyway, 
+        // but setting it triggers geometry updates.
+        root.x = newX
+        root.y = newY
+        
+        root.minimumWidth = targetW
+        root.maximumWidth = targetW
+        root.minimumHeight = targetH
+        root.maximumHeight = targetH
     }
 
     Component.onCompleted: {
@@ -634,29 +644,24 @@ Window {
     }
 
     // ============== UI COMPONENTS ==============
+    // Removed custom shadow and explicit rounding to let Hyprland handle it flawlessly
+    
     Rectangle {
         id: background
         anchors.fill: parent
-        color: bgColorTransparent
-        radius: 16
-        border.color: Qt.rgba(1, 1, 1, 0.1)
-        border.width: 1
-
-        // Drop shadow effect simulation
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: -1
-            z: -1
-            radius: parent.radius + 1
-            color: "transparent"
-            border.color: Qt.rgba(0, 0, 0, 0.3)
-            border.width: 2
-        }
+        anchors.margins: 0 // Removed padding between Hyprland border and app
+        color: bgColor
+        radius: 0 // Removed custom Qt rounding so Hyprland's rounding is used
+        clip: true  // Clip content to window edges
+        
+        // Inner content layer with proper clipping
+        layer.enabled: true
+        layer.smooth: true
 
         StackLayout {
             id: mainStack
             anchors.fill: parent
-            anchors.margins: 1
+            anchors.margins: 0
             currentIndex: 0
 
             // ========== VIEW 1: LIBRARY ==========
@@ -724,15 +729,21 @@ Window {
                     }
                 }
 
-                // Separator
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 1
-                    color: overlayColor
-                }
 
-                // Sheet List
-                ListView {
+                    // Add spacing between search and list
+                    Item {
+                        Layout.fillWidth: true
+                        height: 16
+                    }
+                    // Separator
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 1
+                        color: overlayColor
+                    }
+
+                    // Sheet List
+                    ListView {
                     id: libList
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -830,16 +841,7 @@ Window {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 40
                     color: surfaceColor
-                    radius: 16
-                    
-                    // Cover top corners to make only bottom rounded
-                    Rectangle {
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        height: parent.radius
-                        color: parent.color
-                    }
+                    // No radius - parent clips to rounded corners
 
                     RowLayout {
                         anchors.fill: parent
@@ -1196,8 +1198,8 @@ Window {
                                 
                                 KeyNavigation.tab: inCmd
                                 KeyNavigation.backtab: inDesc
-                                Keys.onTabPressed: { inCmd.forceActiveFocus(); event.accepted = true }
-                                Keys.onBacktabPressed: { inDesc.forceActiveFocus(); event.accepted = true }
+                                Keys.onTabPressed: (event) => { inCmd.forceActiveFocus(); event.accepted = true }
+                                Keys.onBacktabPressed: (event) => { inDesc.forceActiveFocus(); event.accepted = true }
 
                                 background: Rectangle {
                                     color: bgColor
@@ -1222,8 +1224,8 @@ Window {
                                 
                                 KeyNavigation.tab: inDesc
                                 KeyNavigation.backtab: inCat
-                                Keys.onTabPressed: { inDesc.forceActiveFocus(); event.accepted = true }
-                                Keys.onBacktabPressed: { inCat.forceActiveFocus(); event.accepted = true }
+                                Keys.onTabPressed: (event) => { inDesc.forceActiveFocus(); event.accepted = true }
+                                Keys.onBacktabPressed: (event) => { inCat.forceActiveFocus(); event.accepted = true }
 
                                 background: Rectangle {
                                     color: bgColor
@@ -1248,8 +1250,8 @@ Window {
                             
                             KeyNavigation.tab: inCat
                             KeyNavigation.backtab: inCmd
-                            Keys.onTabPressed: { inCat.forceActiveFocus(); event.accepted = true }
-                            Keys.onBacktabPressed: { inCmd.forceActiveFocus(); event.accepted = true }
+                            Keys.onTabPressed: (event) => { inCat.forceActiveFocus(); event.accepted = true }
+                            Keys.onBacktabPressed: (event) => { inCmd.forceActiveFocus(); event.accepted = true }
 
                             background: Rectangle {
                                 color: bgColor
@@ -1266,16 +1268,7 @@ Window {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     color: surfaceColor
-                    radius: 16
-                    
-                    // Cover top corners to make only bottom rounded
-                    Rectangle {
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        height: parent.radius
-                        color: parent.color
-                    }
+                    // No radius - parent clips to rounded corners
 
                     RowLayout {
                         anchors.fill: parent

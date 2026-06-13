@@ -15,9 +15,9 @@ using namespace Qt::StringLiterals;
 
 int main(int argc, char *argv[])
 {
-    // Force X11 platform on Wayland to allow window positioning
-    // Comment this out if you prefer native Wayland (but centering won't work)
-    qputenv("QT_QPA_PLATFORM", "xcb");
+    // Use native Wayland for better compatibility with Hyprland
+    // XWayland can cause visual artifacts with transparent/rounded windows
+    // Note: Window centering may need compositor-specific handling
     
     QGuiApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
